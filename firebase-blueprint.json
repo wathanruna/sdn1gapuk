@@ -1,0 +1,217 @@
+{
+  "entities": {
+    "NewsItem": {
+      "title": "News Item",
+      "description": "Berita dan pengumuman sekolah",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "excerpt": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "date", "excerpt", "content", "category", "imageUrl"]
+    },
+    "GalleryItem": {
+      "title": "Gallery Item",
+      "description": "Foto galeri sekolah",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "imageUrl"]
+    },
+    "ScheduleItem": {
+      "title": "Schedule Item",
+      "description": "Jadwal pelajaran harian",
+      "type": "object",
+      "properties": {
+        "day": { "type": "string" },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "time": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["day", "subjects"]
+    },
+    "ExtraItem": {
+      "title": "Extra Item",
+      "description": "Kegiatan ekstrakurikuler",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "longDescription": { "type": "string" },
+        "schedule": { "type": "string" },
+        "coach": { "type": "string" },
+        "icon": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "description", "longDescription", "schedule", "coach", "icon"]
+    },
+    "Stats": {
+      "title": "School Stats",
+      "description": "Statistik sekolah (jumlah siswa, guru, dsb)",
+      "type": "object",
+      "properties": {
+        "studentCount": { "type": "string" },
+        "teacherCount": { "type": "string" },
+        "accreditation": { "type": "string" },
+        "foundationYear": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AppConfig": {
+      "title": "App Configuration",
+      "description": "Konfigurasi aplikasi seperti kop sekolah",
+      "type": "object",
+      "properties": {
+        "headerImageUrl": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "StaffItem": {
+      "title": "Staff Item",
+      "description": "Informasi staf dan tenaga pendidik",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "position": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "education": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "position", "imageUrl"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Data siswa",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "nisn": { "type": "string" },
+        "gradeLevel": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "nisn", "gradeLevel"]
+    },
+    "GradeRecord": {
+      "title": "Grade Record",
+      "description": "Rekaman nilai raport siswa per semester",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "semesters": {
+          "type": "object",
+          "properties": {
+            "7": { "$ref": "#/entities/SubjectGrades" },
+            "8": { "$ref": "#/entities/SubjectGrades" },
+            "9": { "$ref": "#/entities/SubjectGrades" },
+            "10": { "$ref": "#/entities/SubjectGrades" },
+            "11": { "$ref": "#/entities/SubjectGrades" },
+            "12": { "$ref": "#/entities/SubjectGrades" }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "semesters"]
+    },
+    "SubjectGrades": {
+      "title": "Subject Grades",
+      "type": "object",
+      "properties": {
+        "pai": { "type": "number" },
+        "pancasila": { "type": "number" },
+        "bIndo": { "type": "number" },
+        "matematika": { "type": "number" },
+        "ipas": { "type": "number" },
+        "pjok": { "type": "number" },
+        "seniBdaya": { "type": "number" },
+        "bInggris": { "type": "number" }
+      }
+    },
+    "AdminRef": {
+      "title": "Admin Reference",
+      "description": "Daftar email yang memiliki akses admin",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email"]
+    },
+    "AchievementItem": {
+      "title": "Achievement Item",
+      "description": "Prestasi sekolah (guru dan siswa)",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["Guru", "Siswa"] },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "type", "date", "description"]
+    }
+  },
+  "firestore": {
+    "news": {
+      "schema": "NewsItem",
+      "description": "Koleksi berita"
+    },
+    "gallery": {
+      "schema": "GalleryItem",
+      "description": "Koleksi galeri"
+    },
+    "staff": {
+      "schema": "StaffItem",
+      "description": "Koleksi staf dan guru"
+    },
+    "schedules": {
+      "schema": "ScheduleItem",
+      "description": "Koleksi jadwal"
+    },
+    "extracurriculars": {
+      "schema": "ExtraItem",
+      "description": "Koleksi ekstrakurikuler"
+    },
+    "achievements": {
+      "schema": "AchievementItem",
+      "description": "Koleksi prestasi"
+    },
+    "students": {
+      "schema": "Student",
+      "description": "Koleksi data siswa"
+    },
+    "grades": {
+      "schema": "GradeRecord",
+      "description": "Koleksi nilai raport"
+    },
+    "admins": {
+      "schema": "AdminRef",
+      "description": "Koleksi email administrator tambahan"
+    },
+    "settings/stats": {
+      "schema": "Stats",
+      "description": "Dokumen tunggal statistik sekolah"
+    },
+    "settings/config": {
+      "schema": "AppConfig",
+      "description": "Konfigurasi umum aplikasi"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isMasterAdmin() {
+      return isSignedIn() && request.auth.token.email.lower() == "wathan045@gmail.com";
+    }
+
+    function isAdmin() {
+      // For this specific app, we trust the master email or entries in the admins collection
+      return isSignedIn() && (
+        isMasterAdmin() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Koleksi Berita
+    match /news/{newsId} {
+      allow read: if true;
+      allow write: if isMasterAdmin() && isValidId(newsId);
+    }
+
+    // Koleksi Galeri
+    match /gallery/{imageId} {
+      allow read: if true;
+      allow write: if isMasterAdmin() && isValidId(imageId);
+    }
+
+    // Koleksi Staf
+    match /staff/{staffId} {
+      allow read: if true;
+      allow write: if isMasterAdmin() && isValidId(staffId);
+    }
+
+    // Koleksi Jadwal
+    match /schedules/{scheduleId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(scheduleId);
+    }
+
+    // Koleksi Ekstrakurikuler
+    match /extracurriculars/{extraId} {
+      allow read: if true;
+      allow write: if isMasterAdmin() && isValidId(extraId);
+    }
+
+    // Koleksi Prestasi
+    match /achievements/{achievementId} {
+      allow read: if true;
+      allow write: if isMasterAdmin() && isValidId(achievementId);
+    }
+
+    // Koleksi Siswa
+    match /students/{studentId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && isValidId(studentId); // Standard admins need access to add students for grades
+    }
+
+    // Koleksi Nilai Raport
+    match /grades/{gradeId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && isValidId(gradeId);
+    }
+
+    // Koleksi Admin Akun
+    match /admins/{email} {
+      allow read: if isAdmin();
+      allow write: if isMasterAdmin();
+    }
+
+    // Pengaturan & Statistik
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isMasterAdmin() && isValidId(docId);
+    }
+  }
+}

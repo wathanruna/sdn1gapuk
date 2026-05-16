@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embed SDN 1 Gapuk</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,900;1,900&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        html { scroll-behavior: smooth; }
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+        .selection\:bg-blue-100::selection { background-color: #dbeafe; }
+        .selection\:text-blue-900::selection { color: #1e3a8a; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
+    <div id="root"></div>
+
+    <!-- Dependencies via ESM.sh -->
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18",
+        "react-dom": "https://esm.sh/react-dom@18",
+        "react-dom/client": "https://esm.sh/react-dom@18/client",
+        "motion/react": "https://esm.sh/framer-motion@11.11.17",
+        "lucide-react": "https://esm.sh/lucide-react@0.454.0",
+        "firebase/app": "https://esm.sh/firebase@10.7.1/app",
+        "firebase/auth": "https://esm.sh/firebase@10.7.1/auth",
+        "firebase/firestore": "https://esm.sh/firebase@10.7.1/firestore"
+      }
+    }
+    </script>
+
+    <script type="module">
+        import React, { useState, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { motion, AnimatePresence } from 'motion/react';
+        import { 
+          Menu, X, Phone, Mail, MapPin, 
+          ChevronRight, Calendar, Users, 
+          Trophy, BookOpen, Clock, Tent, 
+          Music, Cpu, Instagram, Facebook, Twitter,
+          Settings, Palette, Target, Mic2, Heart,
+          Camera, Monitor, Globe, Star
+        } from 'lucide-react';
+        import { initializeApp } from 'firebase/app';
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'firebase/auth';
+        import { getFirestore, collection, onSnapshot, query, orderBy, doc, setDoc, deleteDoc } from 'firebase/firestore';
+
+        // --- FIREBASE CONFIG ---
+        const firebaseConfig = {
+          projectId: "gen-lang-client-0731248447",
+          appId: "1:794945575610:web:3a60b24951c7a49247c083",
+          apiKey: "AIzaSyBf2yCXDiQF17VpNS6FpNkXVbvI_M2dGl0",
+          authDomain: "gen-lang-client-0731248447.firebaseapp.com",
+          storageBucket: "gen-lang-client-0731248447.firebasestorage.app",
+          messagingSenderId: "794945575610"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app, "ai-studio-3dcc0fc3-1a9d-466b-81f1-08be8f9973a2");
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        // --- COMPONENTS ---
+        const NavLink = ({ href, children, onClick, scrolled }) => (
+          <a href={href} onClick={onClick} className={`${scrolled ? 'text-slate-600 hover:text-blue-700' : 'text-white hover:text-blue-200'} font-medium transition-colors duration-200`}>
+            {children}
+          </a>
+        );
+
+        const Modal = ({ isOpen, onClose, title, children }) => (
+          <AnimatePresence>
+            {isOpen && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+                <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-white w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-[2.5rem] shadow-2xl relative z-10 scrollbar-none">
+                  <div className="sticky top-0 bg-white/80 backdrop-blur-md px-8 py-6 border-b border-slate-100 flex justify-between items-center z-20">
+                    <h3 className="text-xl font-bold text-blue-950">{title}</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"><X size={24} /></button>
+                  </div>
+                  <div className="p-8">{children}</div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+        );
+
+        function App() {
+          const [lang, setLang] = useState('id');
+          
+          const translations = {
+            id: {
+              nav: { home: 'Beranda', visionMission: 'Visi Misi', registration: 'Pendaftaran', news: 'Berita', jadwal: 'Jadwal', galeri: 'Galeri', contact: 'Kontak', hubungi: 'Hubungi Kami' },
+              hero: { welcome: 'Selamat Datang di SDN 1 Gapuk', futureTitle: 'Masa Depan', futureSub: 'Dimulai Disini.', description: 'Memberikan pendidikan terbaik dengan kurikulum modern yang membentuk karakter berakhlak mulia dan unggul dalam prestasi.', registerNow: 'Daftar Sekarang', knowUs: 'Kenali Kami' },
+              stats: { activeStudents: 'Siswa Aktif', teachers: 'Tenaga Pendidik', accreditation: 'Akreditasi', foundationYear: 'Tahun Berdiri' },
+              profile: { visionMissionTitle: 'Visi & Misi Kami', visionTitle: 'Visi Sekolah', missionTitle: 'Misi Utama' },
+              news: { title: 'Berita & Pengumuman', viewAll: 'Lihat Semua', readMore: 'Baca Selengkapnya', empty: 'Belum ada berita.' },
+              schedule: { title: 'Jadwal Pelajaran', description: 'Pilih kelas dan hari untuk melihat jadwal rutin harian.', hour: 'Jam Pelajaran', empty: 'Jadwal untuk {grade} hari {day} belum tersedia.' },
+              extra: { title: 'Ekstrakurikuler', description: 'Wadah pengembangan minat dan bakat siswa di luar akademik.', empty: 'Belum ada data ekstrakurikuler.' },
+              gallery: { title: 'Galeri Sekolah', description: 'Momen-momen berharga kegiatan belajar dan bermain kami.' },
+              cta: { title: 'Ayo Bergabung Bersama Kami!', description: 'Pendaftaran Siswa Baru Tahun Ajaran 2026/2027 telah dibuka. Dapatkan penawaran khusus dan kemudahan biaya pendaftaran selama bulan ini.', registerOnline: 'Daftar Online Sekarang', contactUs: 'Hubungi Kami' },
+              contact: { title: 'Hubungi & Kunjungi Kami', description: 'Kami selalu senang mendengar dari Anda. Silakan hubungi kami untuk informasi lebih lanjut mengenai pendaftaran atau kunjungan sekolah.', address: 'Alamat Sekolah', phone: 'Telepon & WhatsApp', email: 'Email Resmi', sendMessage: 'Kirim Pesan', formName: 'Nama Lengkap', formEmail: 'Email Anda', formSubject: 'Subjek', formMessage: 'Pesan Anda...', sendButton: 'Kirim Sekarang', sending: 'Memproses...', success: 'Terima kasih! Pesan Anda telah disiapkan di aplikasi email Anda.' },
+              footer: { copyright: '© 2026 SD Negeri 1 Gapuk. Seluruh hak cipta dilindungi undang-undang.' }
+            },
+            en: {
+              nav: { home: 'Home', visionMission: 'Vision & Mission', registration: 'Registration', news: 'News', jadwal: 'Schedule', galeri: 'Gallery', contact: 'Contact', hubungi: 'Contact Us' },
+              hero: { welcome: 'Welcome to SDN 1 Gapuk', futureTitle: 'The Future', futureSub: 'Starts Here.', description: 'Providing the best education with a modern curriculum that forms noble character and excellence in achievement.', registerNow: 'Register Now', knowUs: 'Get to Know Us' },
+              stats: { activeStudents: 'Active Students', teachers: 'Teachers', accreditation: 'Accreditation', foundationYear: 'Established' },
+              profile: { visionMissionTitle: 'Our Vision & Mission', visionTitle: 'School Vision', missionTitle: 'Main Mission' },
+              news: { title: 'News & Announcements', viewAll: 'View All', readMore: 'Read More', empty: 'No news yet.' },
+              schedule: { title: 'Class Schedule', description: 'Select grade and day to see daily routine schedule.', hour: 'Lesson Hour', empty: 'Schedule for {grade} on {day} is not available yet.' },
+              extra: { title: 'Extracurricular', description: 'A place to develop student interests and talents outside academics.', empty: 'No extracurricular data yet.' },
+              gallery: { title: 'School Gallery', description: 'Precious moments of our learning and playing activities.' },
+              cta: { title: 'Come Join Us!', description: 'New Student Admission for Academic Year 2026/2027 is now open. Get special offers and ease of registration during this month.', registerOnline: 'Register Online Now', contactUs: 'Contact Us' },
+              contact: { title: 'Contact & Visit Us', description: 'We are always happy to hear from you. Please contact us for more information regarding registration or school visits.', address: 'School Address', phone: 'Phone & WhatsApp', email: 'Official Email', sendMessage: 'Send Message', formName: 'Full Name', formEmail: 'Your Email', formSubject: 'Subject', formMessage: 'Your Message...', sendButton: 'Send Now', sending: 'Processing...', success: 'Thank you! Your message has been prepared in your email app.' },
+              footer: { copyright: '© 2026 SD Negeri 1 Gapuk. All rights reserved.' }
+            }
+          };
+          const t = translations[lang];
+
+          const [newsData, setNewsData] = useState([]);
+          const [galleryData, setGalleryData] = useState([]);
+          const [scheduleData, setScheduleData] = useState([]);
+          const [extraData, setExtraData] = useState([]);
+          const [stats, setStats] = useState({ studentCount: '136', teacherCount: '12', accreditation: 'B', foundationYear: '1987' });
+          const [profile, setProfile] = useState({
+            vision: 'Menjadi lembaga pendidikan dasar yang unggul dalam prestasi, berkarakter mulia, dan berwawasan teknologi masa depan berdasarkan iman dan taqwa.',
+            mission: 'Menanamkan nilai karakter dan budi pekerti luhur sejak dini.\nMenyelenggarakan pembelajaran kreatif dan inovatif berbasis IT.\nMengembangkan potensi bakat siswa melalui berbagai ekstrakurikuler.',
+            heroImage: 'https://lh3.googleusercontent.com/d/1j7v9IbGxCUuoUZTuoFS4hJSv4BQt_L9Z',
+            profileImage: 'https://picsum.photos/seed/vision/800/600'
+          });
+
+          const [isMenuOpen, setIsMenuOpen] = useState(false);
+          const [scrolled, setScrolled] = useState(false);
+          const [activeTab, setActiveTab] = useState('Senin');
+          const [selectedGrade, setSelectedGrade] = useState('Kelas 1');
+          const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
+          const [isSubmitting, setIsSubmitting] = useState(false);
+          const [selectedNews, setSelectedNews] = useState(null);
+          const [selectedExtra, setSelectedExtra] = useState(null);
+          const [selectedGalleryImage, setSelectedGalleryImage] = useState(null);
+          const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
+          const [isAllNewsOpen, setIsAllNewsOpen] = useState(false);
+          const [regForm, setRegForm] = useState({
+            studentName: '',
+            birthPlace: '',
+            birthDate: '',
+            parentName: '',
+            whatsapp: '',
+            address: ''
+          });
+
+          useEffect(() => {
+            const handleScroll = () => setScrolled(window.scrollY > 20);
+            window.addEventListener('scroll', handleScroll);
+
+            // Subscribe to Firebase
+            const unsubNews = onSnapshot(query(collection(db, 'news'), orderBy('date', 'desc')), (snap) => {
+              setNewsData(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            });
+            const unsubGallery = onSnapshot(collection(db, 'gallery'), (snap) => {
+              setGalleryData(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            });
+            const unsubSchedules = onSnapshot(collection(db, 'schedules'), (snap) => {
+              const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              setScheduleData(data);
+              
+              // Automatically select the first available grade if current selection is not in data
+              const uniqueGrades = [...new Set(data.map(s => s.grade))].sort();
+              if (uniqueGrades.length > 0 && (!selectedGrade || !uniqueGrades.includes(selectedGrade))) {
+                setSelectedGrade(uniqueGrades[0]);
+              }
+            });
+            const unsubExtras = onSnapshot(collection(db, 'extracurriculars'), (snap) => {
+              setExtraData(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            });
+            const unsubStats = onSnapshot(doc(db, 'settings/stats'), (snap) => {
+              if (snap.exists()) setStats(snap.data());
+            });
+            const unsubProfile = onSnapshot(doc(db, 'settings/profile'), (snap) => {
+              if (snap.exists()) setProfile(snap.data());
+            });
+
+            return () => {
+              window.removeEventListener('scroll', handleScroll);
+              unsubNews(); unsubGallery(); unsubSchedules(); unsubExtras(); unsubStats(); unsubProfile();
+            };
+          }, []);
+
+          return (
+            <div className="min-h-screen bg-slate-50">
+              <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white shadow-md py-3' : 'bg-transparent py-5'}`}>
+                <div className="max-w-7xl mx-auto px-4 md:px-8 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 flex items-center justify-center">
+                      <img src="https://lh3.googleusercontent.com/d/1sUaFfYHajE5E__zoW7DGQM9odSDDnwHg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                    </div>
+                    <div>
+                      <h1 className={`font-bold text-lg leading-none ${scrolled ? 'text-blue-900' : 'text-white'}`}>SD NEGERI 1 GAPUK</h1>
+                      <p className={`text-[10px] uppercase tracking-wider font-semibold mt-1 ${scrolled ? 'text-slate-500' : 'text-blue-100'}`}>Cerdas, Berkarakter, Unggul</p>
+                    </div>
+                  </div>
+                  <div className="hidden md:flex items-center gap-8">
+                    <NavLink href="#beranda" scrolled={scrolled}>{t.nav.home}</NavLink>
+                    <NavLink href="#visi-misi" scrolled={scrolled}>{t.nav.visionMission}</NavLink>
+                    <NavLink href="#pendaftaran" scrolled={scrolled}>{t.nav.registration}</NavLink>
+                    <NavLink href="#berita" scrolled={scrolled}>{t.nav.news}</NavLink>
+                    <NavLink href="#jadwal" scrolled={scrolled}>{t.nav.jadwal}</NavLink>
+                    <NavLink href="#galeri" scrolled={scrolled}>{t.nav.galeri}</NavLink>
+
+                    {/* Language Switcher */}
+                    <div className={`flex items-center gap-1 border rounded-full p-1 ${scrolled ? 'border-slate-200 bg-slate-50' : 'border-white/20 bg-white/10'}`}>
+                      <button onClick={() => setLang('id')} className={`text-[10px] font-bold px-2 py-1 rounded-full transition-all ${lang === 'id' ? 'bg-blue-600 text-white shadow-sm' : scrolled ? 'text-slate-400' : 'text-white/50'}`}>ID</button>
+                      <button onClick={() => setLang('en')} className={`text-[10px] font-bold px-2 py-1 rounded-full transition-all ${lang === 'en' ? 'bg-blue-600 text-white shadow-sm' : scrolled ? 'text-slate-400' : 'text-white/50'}`}>EN</button>
+                    </div>
+
+                    <a href="#kontak" className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-full font-semibold transition-all shadow-lg active:scale-95">{t.nav.hubungi}</a>
+                  </div>
+                  <div className="flex items-center gap-4 md:hidden">
+                    <button onClick={() => setLang(lang === 'id' ? 'en' : 'id')} className={`text-xs font-bold w-10 h-10 rounded-full border flex items-center justify-center ${scrolled ? 'border-slate-200 text-blue-900' : 'border-white/30 text-white'}`}>{lang.toUpperCase()}</button>
+                    <button className={`p-2 ${scrolled ? 'text-blue-900' : 'text-white'}`} onClick={() => setIsMenuOpen(!isMenuOpen)}>{isMenuOpen ? <X size={28} /> : <Menu size={28} />}</button>
+                  </div>
+                </div>
+                <AnimatePresence>
+                  {isMenuOpen && (
+                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="absolute top-full left-0 right-0 bg-white shadow-xl border-t border-slate-100 p-4 flex flex-col gap-4 md:hidden">
+                      <NavLink href="#beranda" onClick={() => setIsMenuOpen(false)} scrolled={true}>{t.nav.home}</NavLink>
+                      <NavLink href="#visi-misi" onClick={() => setIsMenuOpen(false)} scrolled={true}>{t.nav.visionMission}</NavLink>
+                      <NavLink href="#pendaftaran" onClick={() => setIsMenuOpen(false)} scrolled={true}>{t.nav.registration}</NavLink>
+                      <NavLink href="#berita" onClick={() => setIsMenuOpen(false)} scrolled={true}>{t.nav.news}</NavLink>
+                      <NavLink href="#jadwal" onClick={() => setIsMenuOpen(false)} scrolled={true}>{t.nav.jadwal}</NavLink>
+                      <NavLink href="#galeri" onClick={() => setIsMenuOpen(false)} scrolled={true}>{t.nav.galeri}</NavLink>
+                      <NavLink href="#kontak" onClick={() => setIsMenuOpen(false)} scrolled={true}>{t.nav.contact}</NavLink>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </nav>
+
+              <main>
+                <section id="beranda" className="relative h-[105vh] flex items-center overflow-hidden pt-12 pb-40">
+                  <div className="absolute inset-0 z-0">
+                    <img src={profile.heroImage} className="w-full h-full object-cover brightness-[0.4]" alt="Hero" referrerPolicy="no-referrer" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-950/80 to-transparent" />
+                  </div>
+                  <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10 w-full mt-20">
+                    <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="max-w-2xl text-white pt-14">
+                      <span className="inline-block bg-blue-600/30 backdrop-blur-md border border-blue-400/30 px-4 py-1.5 rounded-full text-sm font-semibold mb-6 tracking-wide uppercase">{t.hero.welcome}</span>
+                      <h2 className="text-5xl md:text-7xl font-bold leading-[1.1] mb-6">{t.hero.futureTitle} <br /> <span className="text-blue-400">{t.hero.futureSub}</span></h2>
+                      <p className="text-lg text-slate-200 mb-10 leading-relaxed max-w-lg">{t.hero.description}</p>
+                      <div className="flex flex-wrap gap-4">
+                        <button onClick={() => setIsRegistrationOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full font-bold flex items-center gap-2 transition-all shadow-xl active:scale-95 group">{t.hero.registerNow} <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" /></button>
+                        <a href="#visi-misi" className="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white border border-white/30 px-8 py-4 rounded-full font-bold transition-all active:scale-95">{t.hero.knowUs}</a>
+                      </div>
+                    </motion.div>
+                  </div>
+                </section>
+
+                <section className="relative z-20 md:-mt-16 mt-10 max-w-5xl mx-auto px-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { label: t.stats.activeStudents, value: stats.studentCount, icon: Users },
+                      { label: t.stats.teachers, value: stats.teacherCount, icon: BookOpen },
+                      { label: t.stats.accreditation, value: stats.accreditation, icon: Trophy },
+                      { label: t.stats.foundationYear, value: stats.foundationYear, icon: Clock },
+                    ].map((stat, i) => (
+                      <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center text-center border border-slate-100">
+                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 mb-4"><stat.icon size={24} /></div>
+                        <h3 className="text-2xl font-bold text-blue-900 mb-1">{stat.value}</h3>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{stat.label}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                </section>
+
+                <section id="visi-misi" className="py-24 max-w-7xl mx-auto px-4 md:px-8">
+                  <div className="text-center mb-16">
+                    <h2 className="text-3xl md:text-4xl font-bold text-blue-950 mb-4">{t.profile.visionMissionTitle}</h2>
+                    <div className="w-20 h-1.5 bg-blue-600 mx-auto rounded-full" />
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-12 items-center">
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="relative aspect-video rounded-3xl overflow-hidden shadow-2xl">
+                      <img src={profile.profileImage} className="w-full h-full object-cover" alt="Vision" referrerPolicy="no-referrer" />
+                    </motion.div>
+                    <div className="space-y-8">
+                      <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100">
+                        <h3 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-3"><div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600"><Trophy size={18} /></div>{t.profile.visionTitle}</h3>
+                        <p className="text-slate-600 leading-relaxed italic">"{profile.vision}"</p>
+                      </div>
+                      <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100">
+                        <h3 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-3"><div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600"><BookOpen size={18} /></div>{t.profile.missionTitle}</h3>
+                        <ul className="space-y-3 text-slate-600">
+                          {profile.mission.split('\n').map((point, i) => (
+                            <li key={i} className="flex gap-3"><div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />{point}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section id="berita" className="py-24 bg-slate-100/50">
+                  <div className="max-w-7xl mx-auto px-4 md:px-8">
+                    <div className="flex justify-between items-end mb-12">
+                      <div><h2 className="text-3xl font-bold text-blue-950 mb-4">{t.news.title}</h2><div className="w-16 h-1 bg-blue-600 rounded-full" /></div>
+                      <button onClick={() => setIsAllNewsOpen(true)} className="text-blue-700 font-bold flex items-center gap-2 hover:gap-3 transition-all">{t.news.viewAll} <ChevronRight size={18} /></button>
+                    </div>
+                      <div className="grid md:grid-cols-3 gap-8">
+                        {newsData.length > 0 ? newsData.map((news, i) => (
+                          <motion.button key={news.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -5 }} onClick={() => setSelectedNews(news)} className="bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all group cursor-pointer text-left w-full">
+                            <div className="h-52 overflow-hidden"><img src={news.imageUrl} alt={news.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" /></div>
+                            <div className="p-6">
+                              <div className="flex items-center justify-between mb-4"><span className="bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">{news.category}</span><span className="text-slate-400 text-xs flex items-center gap-1"><Calendar size={12} /> {news.date}</span></div>
+                              <h3 className="font-bold text-lg mb-3 text-blue-950 group-hover:text-blue-700 transition-colors line-clamp-2">{news.title}</h3>
+                              <p className="text-slate-600 text-sm mb-4 line-clamp-3">{news.excerpt}</p>
+                              <div className="pt-4 border-t border-slate-100 flex items-center text-blue-600 font-bold text-sm">{t.news.readMore} <ChevronRight size={16} /></div>
+                            </div>
+                          </motion.button>
+                        )) : <div className="col-span-3 text-center py-10 text-slate-400 font-medium">{t.news.empty}</div>}
+                      </div>
+                  </div>
+                </section>
+
+                <section id="jadwal" className="py-24 max-w-7xl mx-auto px-4 md:px-8">
+                  <div className="grid lg:grid-cols-2 gap-20">
+                    <div>
+                      <div className="mb-10">
+                        <h2 className="text-3xl font-bold text-blue-950 mb-4">{t.schedule.title}</h2>
+                        <div className="flex flex-wrap gap-2 mb-6">
+                          {[...new Set(scheduleData.map(s => s.grade))].sort().map(grade => (
+                            <button key={grade} onClick={() => setSelectedGrade(grade)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedGrade === grade ? 'bg-blue-900 shadow-md text-white' : 'bg-white text-slate-400 hover:bg-slate-100 border border-slate-100'}`}>{grade}</button>
+                          ))}
+                          {scheduleData.length === 0 && <p className="text-slate-400 text-xs italic">{t.news.empty}</p>}
+                        </div>
+                        <p className="text-slate-500 text-sm">{t.schedule.description}</p>
+                      </div>
+                      <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-none">
+                        {['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((day) => (
+                          <button key={day} onClick={() => setActiveTab(day)} className={`px-6 py-2.5 rounded-full font-bold transition-all text-sm shrink-0 ${activeTab === day ? 'bg-blue-700 text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-200'}`}>
+                            {lang === 'id' ? day : {
+                              'Senin': 'Monday',
+                              'Selasa': 'Tuesday',
+                              'Rabu': 'Wednesday',
+                              'Kamis': 'Thursday',
+                              'Jumat': 'Friday',
+                              'Sabtu': 'Saturday'
+                            }[day]}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden min-h-[300px]">
+                        <AnimatePresence mode="wait">
+                          <motion.div key={`${selectedGrade}-${activeTab}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-4">
+                            {scheduleData.find(s => s.day === activeTab && s.grade === selectedGrade)?.subjects.map((sub, i) => (
+                              <div key={i} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4 ${i !== 0 ? 'border-t border-slate-50' : ''}`}>
+                                <div className="flex items-center gap-4"><div className="w-10 h-10 bg-slate-100 rounded-full flex-shrink-0 flex items-center justify-center text-blue-700"><Clock size={18} /></div><div><h4 className="font-bold text-slate-800 break-words">{sub.name}</h4><p className="text-xs text-slate-400 font-medium">{t.schedule.hour}</p></div></div>
+                                <span className="bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1 rounded-lg self-start sm:self-center shrink-0">{sub.time}</span>
+                              </div>
+                            )) || <div className="py-20 text-center text-slate-400 italic font-medium">
+                              {t.schedule.empty.replace('{grade}', selectedGrade).replace('{day}', lang === 'id' ? activeTab : {
+                                'Senin': 'Monday',
+                                'Selasa': 'Tuesday',
+                                'Rabu': 'Wednesday',
+                                'Kamis': 'Thursday',
+                                'Jumat': 'Friday',
+                                'Sabtu': 'Saturday'
+                              }[activeTab] || activeTab)}
+                            </div>}
+                          </motion.div>
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mb-10"><h2 className="text-3xl font-bold text-blue-950 mb-4">{t.extra.title}</h2><p className="text-slate-500">{t.extra.description}</p></div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {extraData.map((extra, i) => (
+                            <motion.div key={extra.id} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} onClick={() => setSelectedExtra(extra)} className="bg-white p-6 rounded-3xl shadow-lg border border-slate-50 hover:bg-blue-700 hover:text-white transition-all group cursor-pointer w-full box-border">
+                              <div className="w-12 h-12 bg-blue-50 group-hover:bg-blue-600 rounded-2xl flex items-center justify-center text-blue-700 group-hover:text-white mb-4 transition-colors">
+                                {extra.icon === 'Tent' && <Tent size={24} />}
+                                {extra.icon === 'Music' && <Music size={24} />}
+                                {extra.icon === 'Cpu' && <Cpu size={24} />}
+                                {extra.icon === 'Trophy' && <Trophy size={24} />}
+                                {extra.icon === 'Palette' && <Palette size={24} />}
+                                {extra.icon === 'Target' && <Target size={24} />}
+                                {extra.icon === 'BookOpen' && <BookOpen size={24} />}
+                                {extra.icon === 'Mic2' && <Mic2 size={24} />}
+                                {extra.icon === 'Heart' && <Heart size={24} />}
+                                {extra.icon === 'Camera' && <Camera size={24} />}
+                                {extra.icon === 'Monitor' && <Monitor size={24} />}
+                                {extra.icon === 'Users' && <Users size={24} />}
+                                {extra.icon === 'Globe' && <Globe size={24} />}
+                                {extra.icon === 'Star' && <Star size={24} />}
+                                {!extra.icon && <Star size={24} />}
+                              </div>
+                              <h3 className="font-bold mb-2">{extra.name}</h3>
+                              <p className="text-slate-500 group-hover:text-blue-100 text-sm leading-relaxed">{extra.description}</p>
+                            </motion.div>
+                          ))}
+                          {extraData.length === 0 && <p className="col-span-2 text-center text-slate-400 py-6 italic">{t.extra.empty}</p>}
+                        </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section id="galeri" className="py-24 bg-blue-950 text-white">
+                  <div className="max-w-7xl mx-auto px-4 md:px-8 text-center">
+                    <div className="mb-16"><h2 className="text-3xl md:text-4xl font-bold mb-4 serif">{t.gallery.title}</h2><p className="text-blue-200">{t.gallery.description}</p><div className="w-20 h-1.5 bg-blue-500 mx-auto rounded-full mt-6" /></div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-[200px]">
+                        {galleryData.map((item, i) => (
+                          <motion.div key={item.id} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }} onClick={() => setSelectedGalleryImage(item)} className={`relative group overflow-hidden rounded-2xl cursor-pointer ${i === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}>
+                            <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-blue-900/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6"><p className="font-bold text-sm tracking-wide uppercase">{item.title}</p></div>
+                          </motion.div>
+                        ))}
+                      </div>
+                  </div>
+                </section>
+
+                <section id="pendaftaran" className="py-20 max-w-7xl mx-auto px-4 md:px-8">
+                  <div className="bg-gradient-to-br from-blue-700 to-blue-900 rounded-[3rem] p-8 md:p-16 text-center text-white relative overflow-hidden shadow-2xl">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32" />
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-400/20 rounded-full blur-3xl -ml-32 -mb-32" />
+                    <div className="relative z-10">
+                      <h2 className="text-4xl md:text-5xl font-bold mb-6">{t.cta.title}</h2>
+                      <p className="text-blue-100 text-lg mb-10 max-w-2xl mx-auto leading-relaxed">{t.cta.description}</p>
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                        <button onClick={() => setIsRegistrationOpen(true)} className="bg-white text-blue-800 hover:bg-slate-100 px-10 py-5 rounded-full font-bold text-lg shadow-xl outline-none transition-all w-full sm:w-auto">{t.cta.registerOnline}</button>
+                        <a href="https://wa.me/6285939324177" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 group cursor-pointer">
+                          <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors"><Phone size={24} /></div>
+                          <div className="text-left"><p className="text-blue-200 text-xs font-bold uppercase tracking-widest">{t.cta.contactUs}</p><p className="text-xl font-bold">085939324177</p></div>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section id="kontak" className="py-24 bg-white">
+                  <div className="max-w-7xl mx-auto px-4 md:px-8 grid lg:grid-cols-2 gap-20">
+                    <div>
+                      <h2 className="text-3xl font-bold text-blue-950 mb-6">{t.contact.title}</h2>
+                      <p className="text-slate-500 mb-10 leading-relaxed">{t.contact.description}</p>
+                      <div className="space-y-8">
+                        <a href="https://maps.app.goo.gl/T9xSZRxH5SJvfjeJ9" target="_blank" rel="noopener noreferrer" className="flex items-start gap-6 group cursor-pointer text-left">
+                          <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-700 shrink-0 group-hover:bg-blue-100 transition-colors"><MapPin size={28} /></div>
+                          <div><h4 className="font-bold text-slate-800 text-lg mb-1 group-hover:text-blue-700 transition-colors">{t.contact.address}</h4><p className="text-slate-500">Dusun Gapuk Baru, Desa Gapuk Kecamatan Suralaga, Kab. Lombok Timur, NTB.</p></div>
+                        </a>
+                        <a href="https://wa.me/6285939324177" target="_blank" rel="noopener noreferrer" className="flex items-start gap-6 group cursor-pointer text-left">
+                          <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-700 shrink-0 group-hover:bg-blue-100 transition-colors"><Phone size={28} /></div>
+                          <div><h4 className="font-bold text-slate-800 text-lg mb-1 group-hover:text-blue-700 transition-colors">{t.contact.phone}</h4><p className="text-slate-500">085939324177</p></div>
+                        </a>
+                        <a href="mailto:sdn01gapuk@gmail.com" className="flex items-start gap-6 group cursor-pointer text-left">
+                          <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-700 shrink-0 group-hover:bg-blue-100 transition-colors"><Mail size={28} /></div>
+                          <div><h4 className="font-bold text-slate-800 text-lg mb-1 group-hover:text-blue-700 transition-colors">{t.contact.email}</h4><p className="text-slate-500">sdn01gapuk@gmail.com</p></div>
+                        </a>
+                      </div>
+                      <div className="mt-12 flex gap-4">
+                        {[Instagram, Facebook, Twitter].map((Icon, i) => (
+                          <a key={i} href="#" className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-blue-700 hover:text-white transition-all"><Icon size={20} /></a>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 p-8 rounded-[3rem] shadow-inner border border-slate-200">
+                      <h3 className="text-2xl font-bold text-blue-950 mb-8">{t.contact.sendMessage}</h3>
+                      <form className="space-y-4" onSubmit={(e) => {
+                        e.preventDefault();
+                        setIsSubmitting(true);
+                        const mailtoLink = `mailto:sdn01gapuk@gmail.com?subject=${encodeURIComponent(formData.subject || 'Pesan dari Website SDN 1 Gapuk')}&body=${encodeURIComponent(`Nama: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`)}`;
+                        window.location.href = mailtoLink;
+                        setTimeout(() => {
+                          alert(t.contact.success);
+                          setFormData({ name: '', email: '', subject: '', message: '' });
+                          setIsSubmitting(false);
+                        }, 500);
+                      }}>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <input required type="text" placeholder={t.contact.formName} value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="bg-white border-none rounded-2xl py-4 px-6 shadow-sm focus:ring-2 focus:ring-blue-500 w-full outline-none" />
+                          <input required type="email" placeholder={t.contact.formEmail} value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="bg-white border-none rounded-2xl py-4 px-6 shadow-sm focus:ring-2 focus:ring-blue-500 w-full outline-none" />
+                        </div>
+                        <input required type="text" placeholder={t.contact.formSubject} value={formData.subject} onChange={(e) => setFormData({...formData, subject: e.target.value})} className="bg-white border-none rounded-2xl py-4 px-6 shadow-sm focus:ring-2 focus:ring-blue-500 w-full outline-none" />
+                        <textarea required rows={4} placeholder={t.contact.formMessage} value={formData.message} onChange={(e) => setFormData({...formData, message: e.target.value})} className="bg-white border-none rounded-2xl py-4 px-6 shadow-sm focus:ring-2 focus:ring-blue-500 w-full outline-none resize-none" />
+                        <button disabled={isSubmitting} className="bg-blue-700 hover:bg-blue-800 disabled:bg-slate-400 text-white w-full py-4 rounded-2xl font-bold shadow-lg transition-all active:scale-95">{isSubmitting ? t.contact.sending : t.contact.sendButton}</button>
+                      </form>
+                    </div>
+                  </div>
+                </section>
+              </main>
+
+              <footer className="bg-slate-950 py-12 border-t border-white/5">
+                <div className="max-w-7xl mx-auto px-4 md:px-8 text-center">
+                  <div className="flex items-center gap-3 justify-center mb-6">
+                    <div className="w-12 h-12 flex items-center justify-center"><img src="https://lh3.googleusercontent.com/d/1sUaFfYHajE5E__zoW7DGQM9odSDDnwHg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" /></div>
+                    <h1 className="font-bold text-white tracking-tight text-xl">SD NEGERI 1 GAPUK</h1>
+                  </div>
+                  <p className="text-slate-500 text-sm mb-8">{t.footer.copyright}</p>
+                  <div className="flex items-center justify-center gap-8 text-slate-400 text-xs uppercase tracking-widest font-semibold">
+                    <a href="#" className="hover:text-blue-400">Privacy Policy</a><a href="#" className="hover:text-blue-400">Terms of Service</a><a href="https://rumah.pendidikan.go.id/ruang/murid" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400">E-Learning</a>
+                  </div>
+                </div>
+              </footer>
+
+              {/* Modals */}
+              <Modal isOpen={isAllNewsOpen} onClose={() => setIsAllNewsOpen(false)} title="Daftar Berita & Pengumuman">
+                <div className="space-y-2">
+                  {newsData.length > 0 ? (
+                    <div className="divide-y divide-slate-100">
+                      {newsData.map((news) => (
+                        <button key={news.id} onClick={() => { setSelectedNews(news); setIsAllNewsOpen(false); }} className="w-full py-5 flex gap-5 text-left group hover:bg-slate-50 transition-all rounded-2xl px-2 mb-2">
+                          <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden shadow-sm">
+                            <img src={news.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-1.5"><span className="text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">{news.category}</span><span className="text-slate-400 text-[10px] flex items-center gap-1 font-medium"><Calendar size={10} /> {news.date}</span></div>
+                            <h4 className="font-bold text-blue-950 group-hover:text-blue-700 transition-colors line-clamp-2 text-sm">{news.title}</h4>
+                            <p className="text-slate-500 text-[11px] mt-1 line-clamp-2 font-medium">{news.excerpt}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : <p className="text-center py-10 text-slate-400 font-medium italic">Belum ada berita yang diterbitkan.</p>}
+                </div>
+              </Modal>
+
+              <Modal isOpen={selectedNews !== null} onClose={() => setSelectedNews(null)} title="Detail Berita & Pengumuman">
+                {selectedNews && <div className="space-y-6"><img src={selectedNews.imageUrl} alt="News" className="w-full h-64 object-cover rounded-3xl shadow-lg" referrerPolicy="no-referrer" /><div className="flex items-center gap-3"><span className="bg-blue-50 text-blue-700 text-xs font-bold uppercase px-3 py-1 rounded-full">{selectedNews.category}</span><span className="text-slate-400 text-sm flex items-center gap-1"><Calendar size={14} /> {selectedNews.date}</span></div><h2 className="text-3xl font-bold text-blue-950">{selectedNews.title}</h2><p className="text-slate-600 leading-relaxed text-lg whitespace-pre-wrap">{selectedNews.content}</p><div className="pt-6 border-t border-slate-100"><button onClick={() => setSelectedNews(null)} className="bg-blue-700 text-white px-8 py-3 rounded-full font-bold hover:bg-blue-800 transition-colors">Tutup Review</button></div></div>}
+              </Modal>
+
+              <Modal isOpen={selectedExtra !== null} onClose={() => setSelectedExtra(null)} title="Detail Ekstrakurikuler">
+                {selectedExtra && <div className="space-y-8"><div className="flex items-center gap-6"><div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center text-blue-700">{selectedExtra.icon === 'Tent' && <Tent size={40} />}{selectedExtra.icon === 'Music' && <Music size={40} />}{selectedExtra.icon === 'Cpu' && <Cpu size={40} />}{selectedExtra.icon === 'Trophy' && <Trophy size={40} />}</div><div><h2 className="text-3xl font-bold text-blue-950">{selectedExtra.name}</h2><p className="text-blue-600 font-semibold">{selectedExtra.coach}</p></div></div><div className="grid sm:grid-cols-2 gap-4"><div className="bg-slate-50 p-6 rounded-3xl"><h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Clock size={14} /> Jadwal Latihan</h4><p className="font-bold text-slate-800">{selectedExtra.schedule}</p></div><div className="bg-slate-50 p-6 rounded-3xl"><h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Users size={14} /> Status</h4><p className="font-bold text-green-600">Terbuka untuk Anggota Baru</p></div></div><div className="space-y-4"><h3 className="text-xl font-bold text-blue-950">Tentang Kegiatan</h3><p className="text-slate-600 leading-relaxed text-lg">{selectedExtra.longDescription}</p></div><button onClick={() => setSelectedExtra(null)} className="w-full bg-blue-700 text-white py-4 rounded-3xl font-bold hover:bg-blue-800 transition-colors">Kembali ke Menu</button></div>}
+              </Modal>
+
+              <Modal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} title="Formulir Pendaftaran Online">
+                <div className="space-y-8">
+                  <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 flex gap-4 items-center">
+                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white shrink-0"><Users size={24} /></div>
+                    <div>
+                      <p className="text-blue-900 font-bold">Pendaftaran TA 2026/2027</p>
+                      <p className="text-blue-700 text-sm italic">Mohon isi data dengan lengkap dan teliti.</p>
+                    </div>
+                  </div>
+                  <form 
+                    className="space-y-6" 
+                    onSubmit={(e) => { 
+                      e.preventDefault(); 
+                      const message = `Halo SDN 1 Gapuk, saya ingin mendaftarkan calon siswa baru:\n\n📝 *DATA CALON SISWA*\n- Nama: ${regForm.studentName}\n- Tempat Lahir: ${regForm.birthPlace}\n- Tgl Lahir: ${regForm.birthDate}\n\n👤 *DATA ORANG TUA/WALI*\n- Nama: ${regForm.parentName}\n- WhatsApp: ${regForm.whatsapp}\n- Alamat: ${regForm.address}\n\nMohon informasi selanjutnya untuk proses administrasi. Terima kasih.`;
+                      const whatsappUrl = `https://wa.me/6285939324177?text=${encodeURIComponent(message)}`;
+                      window.open(whatsappUrl, '_blank');
+                      alert('Terima kasih! Rincian pendaftaran Anda telah disiapkan. Anda akan dialihkan ke WhatsApp sekolah.');
+                      setIsRegistrationOpen(false); 
+                    }}
+                  >
+                    <div className="space-y-4">
+                      <h4 className="font-bold text-slate-400 text-xs uppercase tracking-widest mb-4">Informasi Calon Siswa</h4>
+                      <input 
+                        required 
+                        type="text" 
+                        placeholder="Nama Lengkap Calon Siswa" 
+                        className="w-full bg-slate-50 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-blue-500 outline-none" 
+                        value={regForm.studentName}
+                        onChange={e => setRegForm({...regForm, studentName: e.target.value})}
+                      />
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <input 
+                          required 
+                          type="text" 
+                          placeholder="Tempat Lahir" 
+                          className="w-full bg-slate-50 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-blue-500 outline-none" 
+                          value={regForm.birthPlace}
+                          onChange={e => setRegForm({...regForm, birthPlace: e.target.value})}
+                        />
+                        <input 
+                          required 
+                          type="date" 
+                          className="w-full bg-slate-50 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-blue-500 outline-none text-slate-500" 
+                          value={regForm.birthDate}
+                          onChange={e => setRegForm({...regForm, birthDate: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <h4 className="font-bold text-slate-400 text-xs uppercase tracking-widest mb-4">Informasi Orang Tua</h4>
+                      <input 
+                        required 
+                        type="text" 
+                        placeholder="Nama Orang Tua / Wali" 
+                        className="w-full bg-slate-50 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-blue-500 outline-none" 
+                        value={regForm.parentName}
+                        onChange={e => setRegForm({...regForm, parentName: e.target.value})}
+                      />
+                      <input 
+                        required 
+                        type="tel" 
+                        placeholder="Nomor WhatsApp (Aktif)" 
+                        className="w-full bg-slate-50 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-blue-500 outline-none" 
+                        value={regForm.whatsapp}
+                        onChange={e => setRegForm({...regForm, whatsapp: e.target.value})}
+                      />
+                      <textarea 
+                        required 
+                        rows={3} 
+                        placeholder="Alamat Domisili" 
+                        className="w-full bg-slate-50 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                        value={regForm.address}
+                        onChange={e => setRegForm({...regForm, address: e.target.value})}
+                      ></textarea>
+                    </div>
+                    <button type="submit" className="w-full bg-blue-700 text-white py-5 rounded-3xl font-bold text-lg hover:bg-blue-800 transition-all shadow-xl active:scale-95">Kirim Pendaftaran ke WhatsApp</button>
+                  </form>
+                </div>
+              </Modal>
+
+              {/* Gallery Image Modal */}
+              <Modal isOpen={selectedGalleryImage !== null} onClose={() => setSelectedGalleryImage(null)} title={selectedGalleryImage?.title || 'Galeri Foto'}>
+                {selectedGalleryImage && <div className="space-y-4"><img src={selectedGalleryImage.imageUrl} alt={selectedGalleryImage.title} className="w-full h-auto max-h-[60vh] object-contain rounded-2xl shadow-lg" referrerPolicy="no-referrer" /><p className="text-slate-500 text-center text-sm font-medium">{selectedGalleryImage.title}</p></div>}
+              </Modal>
+            </div>
+          );
+        }
+
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
